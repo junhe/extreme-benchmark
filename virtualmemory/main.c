@@ -43,6 +43,7 @@ int main(int argc, char **argv)
         exit(1);
     }
 
+
     /* 
      * To get a base line time 
      */
@@ -52,13 +53,12 @@ int main(int argc, char **argv)
     long i;
     long op_addr;
     for ( i = 0; i < n_loop; ++i ) {
-        op_addr = abs((start_addr + stride * i) % mem_len);
+        op_addr = labs((start_addr + stride * i) % mem_len);
     }
 
     gettimeofday(&end, NULL);
     timersub( &end, &start, &result );
     base_time = result.tv_sec + result.tv_usec/1000000.0;
-
 
     /* 
      * To get the aggerated time 
@@ -66,7 +66,7 @@ int main(int argc, char **argv)
     gettimeofday(&start, NULL);
 
     for ( i = 0; i < n_loop; ++i ) {
-        op_addr = abs((start_addr + stride * i) % mem_len) ;
+        op_addr = labs((start_addr + stride * i) % mem_len) ;
         (*(char *)(pmem+op_addr))++;
     }
 
@@ -83,7 +83,6 @@ int main(int argc, char **argv)
     
     ops = noperations / op_duration;
     bandwidth = nbytes / op_duration;
-
 
 
     /* clean up */
