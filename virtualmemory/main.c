@@ -68,7 +68,7 @@ int main(int argc, char **argv)
     /* The basic loop */
     for ( i = 0; i < n_loop; ++i ) {
         op_addr = start_addr + stride * i;
-        (*pmem)++;
+        (*(pmem+op_addr))++;
     }
 
     gettimeofday(&end, NULL);
