@@ -35,7 +35,7 @@ int main(int argc, char **argv)
     start_addr = atol(argv[2]);
     op_size = atol(argv[3]);
     stride = atol(argv[4]);
-    n_loop = (mem_len-op_size) / stride;
+    n_loop = (mem_len-op_size) / abs(stride);
 
     pmem = (char *)malloc(mem_len);
     if ( pmem == NULL ) {
@@ -52,7 +52,7 @@ int main(int argc, char **argv)
     long i;
     long op_addr;
     for ( i = 0; i < n_loop; ++i ) {
-        op_addr = start_addr + stride * i;
+        op_addr = abs((start_addr + stride * i) % mem_len);
     }
 
     gettimeofday(&end, NULL);
@@ -66,7 +66,7 @@ int main(int argc, char **argv)
     gettimeofday(&start, NULL);
 
     for ( i = 0; i < n_loop; ++i ) {
-        op_addr = start_addr + stride * i;
+        op_addr = abs((start_addr + stride * i) % mem_len) ;
         (*(char *)(pmem+op_addr))++;
     }
 
@@ -75,14 +75,29 @@ int main(int argc, char **argv)
     agg_time = result.tv_sec + result.tv_usec/1000000.0;
 
 
+    /* results */
+    double ops, bandwidth, op_duration;
+    long noperations = n_loop;
+    long nbytes = n_loop * op_size;
+    op_duration = agg_time - base_time;
+    
+    ops = noperations / op_duration;
+    bandwidth = nbytes / op_duration;
+
+
+
     /* clean up */
     free(pmem);
 
     /* Output header */
-    printf("%20s %20s %20s %20s %20s %20s %20s\n", 
-            "mem_len", "start_addr", "op_size", "stride", "base_time", "agg_time", "HEADERMARKER_vm");
-    printf("%20ld %20ld %20ld %20ld %20lf %20lf %20s\n", 
-            mem_len, start_addr, op_size, stride, base_time, agg_time, "DATAMARKER_vm");
+    printf("%15s %15s %15s %15s %15s %15s %15s %15s %15s %15s %15s %15s\n", 
+            "mem_len", "start_addr", "op_size", "stride", "base_time", "agg_time", 
+            "noperations", "nbytes", "op_duration", "ops", "bandwidth", 
+            "HEADERMARKER_vm");
+    printf("%15ld %15ld %15ld %15ld %15lf %15lf %15ld %15ld %15lf %15lf %15lf %15s\n", 
+            mem_len, start_addr, op_size, stride, base_time, agg_time, 
+            noperations, nbytes, op_duration, ops, bandwidth,
+            "DATAMARKER_vm");
     return 0;
 }
 
