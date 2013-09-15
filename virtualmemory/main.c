@@ -35,7 +35,7 @@ int main(int argc, char **argv)
     start_addr = atol(argv[2]);
     op_size = atol(argv[3]);
     stride = atol(argv[4]);
-    n_loop = mem_len / stride;
+    n_loop = (mem_len-op_size) / stride;
 
     pmem = (char *)malloc(mem_len);
     if ( pmem == NULL ) {
@@ -65,10 +65,9 @@ int main(int argc, char **argv)
      */
     gettimeofday(&start, NULL);
 
-    /* The basic loop */
     for ( i = 0; i < n_loop; ++i ) {
         op_addr = start_addr + stride * i;
-        (*(pmem+op_addr))++;
+        (*(char *)(pmem+op_addr))++;
     }
 
     gettimeofday(&end, NULL);
