@@ -37,6 +37,8 @@
 #include <string.h>
 #include <errno.h>
 #include <fcntl.h>
+#include <assert.h>
+#include <unistd.h>
 
 int main(int argc, char **argv)
 {
@@ -63,10 +65,10 @@ int main(int argc, char **argv)
     /* create the files */
     if ( do_write == 1 ) {
         int dirno;
-        char *wbuf;
-        wbuf = (char *)malloc(size_per_op);
-        if (wbuf == NULL) {
-            perror("Failed to allocate memory for wbuf");
+        char *buf;
+        buf = (char *)malloc(size_per_op);
+        if (buf == NULL) {
+            perror("Failed to allocate memory for buf");
             exit(1);
         }
 
@@ -100,7 +102,7 @@ int main(int argc, char **argv)
                 /* write to file */
                 int writeno;
                 for ( writeno = 0; writeno < nops_per_file; writeno++) {
-                    write(fd, wbuf, size_per_op);
+                    write(fd, buf, size_per_op);
                     if ( do_fsync == 1 ) {
                         fsync(fd);
                     }
@@ -109,14 +111,58 @@ int main(int argc, char **argv)
                 close(fd);
             }
         }
-        free(wbuf);
+        free(buf);
     }
 
     /* read the files */
     if ( do_read == 1 ) {
+        char *buf;
+        buf = (char *)malloc(size_per_op);
+        if (buf == NULL) {
+            perror("Failed to allocate memory for buf");
+            exit(1);
+        }
 
-    }
+        int fileno, dirno;
+        int nfiles = nfile_per_dir * ndir;
+#define FDS_MAX 32768 
+        int fds[FDS_MAX]; /* file descriptos in the order of operations */
+        int i_fds = 0;
+        
+        /* open all files */
+        for ( fileno = 0; fileno < nfile_per_dir; fileno++ ) {
+            for ( dirno = 0; dirno < ndir; dirno++ ) {
+                char filepath[1024];
+                sprintf(filepath, "%s/dir.%05d/file.%05d", 
+                                  topdir, dirno, fileno);
+                printf("%s\n", filepath);
+                int fd = open(filepath, O_RDONLY);
+                if ( fd == -1 ) {
+                    perror("Failed to open file for read");
+                    exit(1);
+                }
+                assert( i_fds < nfiles);
+                fds[i_fds] = fd;
+                i_fds++;
+            }/* dirno */
+        }/* fileno */
 
+        /* read the files in the order of opening */
+        int ifile;
+        int op;
+        for ( op = 0; op < nops_per_file; op++ ) {
+            for ( ifile = 0; ifile < nfiles; ifile++ ) {
+                read(fds[ifile], buf, size_per_op);
+            }
+        }
+
+        /* close files */
+        for ( ifile = 0; ifile < nfiles; ifile++ ) {
+            close(fds[ifile]);
+        }
+        
+        free(buf);
+    }/* do_read */
 
     /* print out results */
     printf(
