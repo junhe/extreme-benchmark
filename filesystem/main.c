@@ -31,8 +31,12 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/time.h>
+#include <sys/stat.h>
+#include <sys/types.h>
 #include <time.h>
 #include <string.h>
+#include <errno.h>
+#include <fcntl.h>
 
 int main(int argc, char **argv)
 {
@@ -55,6 +59,63 @@ int main(int argc, char **argv)
     do_write = atoi(argv[7]);
     do_read = atoi(argv[8]);
     strcpy(topdir, argv[9]);
+
+    /* create the files */
+    if ( do_write == 1 ) {
+        int dirno;
+        char *wbuf;
+        wbuf = (char *)malloc(size_per_op);
+        if (wbuf == NULL) {
+            perror("Failed to allocate memory for wbuf");
+            exit(1);
+        }
+
+        /* create directories */
+        for (dirno = 0; dirno < ndir; dirno++) {
+            char dirpath[1024];
+            int ret;
+            sprintf(dirpath, "%s/dir.%05d", topdir, dirno);
+            /*printf("%s\n", dirpath);           */
+            
+            ret = mkdir(dirpath, 0777);
+            if ( ret != 0 && errno != EEXIST ) {
+                perror("Failed to create dir");
+                exit(1);
+            }
+
+            /* crete files */
+            int fileno;
+            for ( fileno = 0; fileno < nfile_per_dir; fileno++ ) {
+                char filepath[1024];
+                int fd;
+                sprintf(filepath, "%s/file.%05d", dirpath, fileno);
+                printf("%s\n", filepath);
+                
+                fd = open(filepath, O_WRONLY|O_CREAT, 0644);
+                if ( fd != 0 && errno != EEXIST) {
+                    perror("failed to create file");
+                    exit(1);
+                }
+
+                /* write to file */
+                int writeno;
+                for ( writeno = 0; writeno < nops_per_file; writeno++) {
+                    write(fd, wbuf, size_per_op);
+                    if ( do_fsync == 1 ) {
+                        fsync(fd);
+                    }
+                }
+
+                close(fd);
+            }
+        }
+        free(wbuf);
+    }
+
+    /* read the files */
+    if ( do_read == 1 ) {
+
+    }
 
 
     /* print out results */
