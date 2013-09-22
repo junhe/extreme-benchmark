@@ -22,6 +22,9 @@ int main(int argc, char **argv)
 {
     if ( argc != 5 ) {
         printf("Usage: %s mem_len start_addr op_size stride\n", argv[0]);
+        printf("Sorry but you are the one that make sure:\n"
+               "mem_len is multiple stridei.\n" 
+               "stride is mulitiple op_size.\n");
         exit(1);
     }
 
@@ -35,7 +38,7 @@ int main(int argc, char **argv)
     start_addr = atol(argv[2]);
     op_size = atol(argv[3]);
     stride = atol(argv[4]);
-    n_loop = (mem_len-op_size) / abs(stride);
+    n_loop = mem_len / abs(stride);
 
     pmem = (char *)malloc(mem_len);
     if ( pmem == NULL ) {
@@ -43,6 +46,12 @@ int main(int argc, char **argv)
         exit(1);
     }
 
+    long i;
+    long op_addr;
+    long padding;
+    long padding_end = start_addr + labs(stride);
+
+    /*printf("%ld %ld\n", n_loop, labs(stride)/op_size);*/
 
     /* 
      * To get a base line time 
@@ -50,10 +59,10 @@ int main(int argc, char **argv)
     gettimeofday(&start, NULL);
 
     /* The basic loop */
-    long i;
-    long op_addr;
-    for ( i = 0; i < n_loop; ++i ) {
-        op_addr = labs((start_addr + stride * i) % mem_len);
+    for ( padding = start_addr; padding < padding_end; padding+=op_size ) {
+        for ( i = 0; i < n_loop; ++i ) {
+            op_addr = labs((padding + stride * i) % mem_len);
+        }
     }
 
     gettimeofday(&end, NULL);
@@ -65,9 +74,11 @@ int main(int argc, char **argv)
      */
     gettimeofday(&start, NULL);
 
-    for ( i = 0; i < n_loop; ++i ) {
-        op_addr = labs((start_addr + stride * i) % mem_len) ;
-        (*(char *)(pmem+op_addr))++;
+    for ( padding = start_addr; padding < padding_end; padding+=op_size ) {
+        for ( i = 0; i < n_loop; ++i ) {
+            op_addr = labs((padding + stride * i) % mem_len) ;
+            (*(char *)(pmem+op_addr))++;
+        }
     }
 
     gettimeofday(&end, NULL);
@@ -77,8 +88,8 @@ int main(int argc, char **argv)
 
     /* results */
     double ops, bandwidth, op_duration;
-    long noperations = n_loop;
-    long nbytes = n_loop * op_size;
+    long noperations = mem_len/op_size;
+    long nbytes = mem_len;
     op_duration = agg_time - base_time;
     
     ops = noperations / op_duration;
