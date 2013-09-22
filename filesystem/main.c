@@ -11,8 +11,6 @@
  * do_fsync: [0|1] whether or not do fsync() after EACH write. Doing this 
  *           will ruin the delayed allocation in Ext4 and creates more 
  *           fragmentation.
- * r_file_stride: if it is 4, the benchmark will read file00 and file04, 
- *                skipping 3 files in the middle
  * do_write: [0|1] sometimes we only want to create the files
  * do_read:  [0|1] soemtimes we only want to read the files 
  *
@@ -42,9 +40,9 @@
 
 int main(int argc, char **argv)
 {
-    if ( argc != 10 ) {
+    if ( argc != 9 ) {
         printf("Usage: %s ndir nfile_per_dir nops_per_file size_per_op do_fsync "
-               "r_file_stride do_write do_read topdir\n", argv[0]);
+               "do_write do_read topdir\n", argv[0]);
         exit(1);
     }
 
@@ -54,7 +52,7 @@ int main(int argc, char **argv)
     double read_open_time, read_time, read_close_time;
 
     /* initialize parameters */
-    int ndir, nfile_per_dir, nops_per_file, size_per_op, do_fsync, r_file_stride, do_write, do_read;
+    int ndir, nfile_per_dir, nops_per_file, size_per_op, do_fsync, do_write, do_read;
     char topdir[1024]; /* use path longer than this? crash! */
 
     ndir = atoi(argv[1]);
@@ -62,10 +60,9 @@ int main(int argc, char **argv)
     nops_per_file = atoi(argv[3]);
     size_per_op = atoi(argv[4]);
     do_fsync = atoi(argv[5]);
-    r_file_stride = atoi(argv[6]);
-    do_write = atoi(argv[7]);
-    do_read = atoi(argv[8]);
-    strcpy(topdir, argv[9]);
+    do_write = atoi(argv[6]);
+    do_read = atoi(argv[7]);
+    strcpy(topdir, argv[8]);
 
     /* create the files */
     if ( do_write == 1 ) {
@@ -96,7 +93,7 @@ int main(int argc, char **argv)
                 char filepath[1024];
                 int fd;
                 sprintf(filepath, "%s/file.%05d", dirpath, fileno);
-                printf("%s\n", filepath);
+                /*printf("%s\n", filepath);*/
                 
                 fd = open(filepath, O_WRONLY|O_CREAT, 0644);
                 if ( fd != 0 && errno != EEXIST) {
@@ -141,7 +138,7 @@ int main(int argc, char **argv)
                 char filepath[1024];
                 sprintf(filepath, "%s/dir.%05d/file.%05d", 
                                   topdir, dirno, fileno);
-                printf("%s\n", filepath);
+                /*printf("%s\n", filepath);*/
                 int fd = open(filepath, O_RDONLY);
                 if ( fd == -1 ) {
                     perror("Failed to open file for read");
@@ -188,6 +185,7 @@ int main(int argc, char **argv)
     /* print out results */
     int nfiles = ndir * nfile_per_dir;
     long totalbytes = size_per_op * nops_per_file * nfiles;
+    double totaltime = read_open_time + read_time + read_close_time;
 
     char str_read_open_time[128];
     char str_read_time[128];
@@ -201,13 +199,13 @@ int main(int argc, char **argv)
         sprintf(str_read_time, "%lf", read_time);
         sprintf(str_read_close_time, "%lf", read_close_time);
 
-        double r_effective_bw = totalbytes / (read_open_time + read_time + read_close_time);
+        double r_effective_bw = totalbytes / totaltime;
         sprintf(str_r_effective_bw, "%lf", r_effective_bw);
 
         double r_bw = totalbytes / read_time;
         sprintf(str_r_bw, "%lf", r_bw);
 
-        double r_effective_iops = nfiles*2 + nops_per_file*nfiles;
+        double r_effective_iops = (nfiles*2 + nops_per_file*nfiles)/totaltime;
         sprintf(str_r_effective_iops, "%lf", r_effective_iops);
     } else {
         sprintf(str_read_open_time, "NA");
@@ -236,14 +234,12 @@ int main(int argc, char **argv)
             "%15s "
             "%15s "
             "%15s "
-            "%15s "
             "%15s \n",
             "ndir", 
             "nfile_per_dir", 
             "nops_per_file", 
             "size_per_op", 
             "do_fsync", 
-            "r_file_stride",
             "do_write", 
             "do_read",
             "topdir",
@@ -258,7 +254,6 @@ int main(int argc, char **argv)
             "HEADERMARKER_fs"
             );
     printf(
-            "%15d "
             "%15d "
             "%15d "
             "%15d "
@@ -281,7 +276,6 @@ int main(int argc, char **argv)
             nops_per_file, 
             size_per_op, 
             do_fsync, 
-            r_file_stride,
             do_write, 
             do_read,
             topdir,
