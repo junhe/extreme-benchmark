@@ -96,7 +96,7 @@ int main(int argc, char **argv)
                 /*printf("%s\n", filepath);*/
                 
                 fd = open(filepath, O_WRONLY|O_CREAT, 0644);
-                if ( fd != 0 && errno != EEXIST) {
+                if ( fd == -1 && errno != EEXIST) {
                     perror("failed to create file");
                     exit(1);
                 }

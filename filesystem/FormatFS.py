@@ -190,6 +190,9 @@ def remakeExt4(partition, mountpoint, username, groupname,
     # all of the above has to success except this one
     chDirOwner(mountpoint, username, groupname)
 
+#remakeExt4("/dev/sda4", "/l0", "jhe", "plfs", 
+#        blockscount=1024*1024, blocksize=4096)
+
 def buildNewExt4(devname, mountpoint, confpath, username, groupname):
     devname_part1 = devname+"1"
     
