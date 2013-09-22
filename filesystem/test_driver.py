@@ -5,14 +5,28 @@ import FormatFS
 
 def main():
 
-    ndir = [8] # 1
-    nfile_per_dir = [8] #2
-    nops_per_file = [8] #3
-    size_per_op = [1, 4096] #4 
-    do_fsync = [0,1] #5
+    totalbytes = 2*1024*1024
+
+    exps = range(2)
+    ndir = [2**x for x in exps] # 1
+
+    exps = range(2)
+    nfile_per_dir = [2**x for x in exps] #2
+    nops_per_file = [0] #3, decided by totalbytes
+    size_per_op = [1, 1024, 4096, 1024*1024, 4*1024*1024] #4 
+    do_fsync = [0] #5
     do_write = [0] #6
     do_read = [0]  #7
     topdir = ["/l0"] #8 
+
+    NDIR = 1
+    NFILE_PER_DIR = 2
+    NOPS_PER_FILE = 3
+    SIZE_PER_OP = 4
+    DO_FSYNC = 5
+    DO_WRITE = 6
+    DO_READ = 7
+    TOPDIR = 8
     
     parameters = [ndir, nfile_per_dir, nops_per_file, 
                   size_per_op, do_fsync, do_write, do_read, topdir]
@@ -26,12 +40,21 @@ def main():
     result_file = open(jobid+".result", 'w')
     for para in paralist:
         para = list(para)
-        para = [str(x) for x in para]
         cmd = ['./fsbench'] + para
+
+        # decide nops_per_file
+        _nops_per_file = \
+                totalbytes/(cmd[NDIR]*cmd[NFILE_PER_DIR]*cmd[SIZE_PER_OP])
+        if _nops_per_file < 1:
+            continue
+        cmd[NOPS_PER_FILE] = _nops_per_file
+        cmd = [str(x) for x in cmd]
+        #print cmd
+        #continue
 
         # get a clean file system
         FormatFS.remakeExt4(partition, cmd[8], "jhe", "plfs", 
-            blockscount=1024*1024, blocksize=4096)
+            blockscount=2*1024*1024, blocksize=4096)
 
         # write the files
         cmd[6] = "1" # do_write
