@@ -48,6 +48,11 @@ int main(int argc, char **argv)
         exit(1);
     }
 
+    
+    /* timer */
+    struct timeval start, end, result;
+    double read_open_time, read_time, read_close_time;
+
     /* initialize parameters */
     int ndir, nfile_per_dir, nops_per_file, size_per_op, do_fsync, r_file_stride, do_write, do_read;
     char topdir[1024]; /* use path longer than this? crash! */
@@ -107,7 +112,6 @@ int main(int argc, char **argv)
                         fsync(fd);
                     }
                 }
-
                 close(fd);
             }
         }
@@ -130,6 +134,8 @@ int main(int argc, char **argv)
         int i_fds = 0;
         
         /* open all files */
+
+        gettimeofday(&start, NULL);
         for ( fileno = 0; fileno < nfile_per_dir; fileno++ ) {
             for ( dirno = 0; dirno < ndir; dirno++ ) {
                 char filepath[1024];
@@ -146,26 +152,82 @@ int main(int argc, char **argv)
                 i_fds++;
             }/* dirno */
         }/* fileno */
+        gettimeofday(&end, NULL);
+        timersub( &end, &start, &result );
+        read_open_time = result.tv_sec + result.tv_usec/1000000.0;
+
 
         /* read the files in the order of opening */
         int ifile;
         int op;
+
+        gettimeofday(&start, NULL);
         for ( op = 0; op < nops_per_file; op++ ) {
             for ( ifile = 0; ifile < nfiles; ifile++ ) {
-                read(fds[ifile], buf, size_per_op);
+                int ret = read(fds[ifile], buf, size_per_op);
+                assert(ret == size_per_op);
             }
         }
+        gettimeofday(&end, NULL);
+        timersub( &end, &start, &result );
+        read_time = result.tv_sec + result.tv_usec/1000000.0;
 
         /* close files */
+        gettimeofday(&start, NULL);
         for ( ifile = 0; ifile < nfiles; ifile++ ) {
             close(fds[ifile]);
         }
+        gettimeofday(&end, NULL);
+        timersub( &end, &start, &result );
+        read_close_time = result.tv_sec + result.tv_usec/1000000.0;
         
         free(buf);
     }/* do_read */
 
+
     /* print out results */
+    int nfiles = ndir * nfile_per_dir;
+    long totalbytes = size_per_op * nops_per_file * nfiles;
+
+    char str_read_open_time[128];
+    char str_read_time[128];
+    char str_read_close_time[128];
+    char str_r_effective_bw[128];
+    char str_r_bw[128];
+    char str_r_effective_iops[128];
+
+    if ( do_read == 1 ) {
+        sprintf(str_read_open_time, "%lf", read_open_time);
+        sprintf(str_read_time, "%lf", read_time);
+        sprintf(str_read_close_time, "%lf", read_close_time);
+
+        double r_effective_bw = totalbytes / (read_open_time + read_time + read_close_time);
+        sprintf(str_r_effective_bw, "%lf", r_effective_bw);
+
+        double r_bw = totalbytes / read_time;
+        sprintf(str_r_bw, "%lf", r_bw);
+
+        double r_effective_iops = nfiles*2 + nops_per_file*nfiles;
+        sprintf(str_r_effective_iops, "%lf", r_effective_iops);
+    } else {
+        sprintf(str_read_open_time, "NA");
+        sprintf(str_read_time, "NA");
+        sprintf(str_read_close_time, "NA");
+        sprintf(str_r_effective_bw, "NA");
+        sprintf(str_r_bw, "NA");
+        sprintf(str_r_effective_iops, "NA");
+    }
+
+
     printf(
+            "%15s "
+            "%15s "
+            "%15s "
+            "%15s "
+            "%15s "
+            "%15s "
+            "%15s "
+            "%15s "
             "%15s "
             "%15s "
             "%15s "
@@ -185,6 +247,14 @@ int main(int argc, char **argv)
             "do_write", 
             "do_read",
             "topdir",
+            "read_open_time",
+            "read_time",
+            "read_close_time",
+            "r_bw",
+            "r_effective_bw",
+            "r_effective_iops",
+            "nfiles",
+            "totalbytes",
             "HEADERMARKER_fs"
             );
     printf(
@@ -197,7 +267,15 @@ int main(int argc, char **argv)
             "%15d "
             "%15d "
             "%15s "
-            "%15s \n",
+            "%15s "
+            "%15s "
+            "%15s "
+            "%15s "
+            "%15s "
+            "%15s "
+            "%15d "
+            "%15ld "
+            "%15s\n",
             ndir, 
             nfile_per_dir, 
             nops_per_file, 
@@ -207,6 +285,14 @@ int main(int argc, char **argv)
             do_write, 
             do_read,
             topdir,
+            str_read_open_time,
+            str_read_time,
+            str_read_close_time,
+            str_r_bw,
+            str_r_effective_bw,
+            str_r_effective_iops,
+            nfiles,
+            totalbytes,
             "DATAMARKER_fs"
           );
     return 0;
