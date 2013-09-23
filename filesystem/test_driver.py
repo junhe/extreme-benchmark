@@ -44,75 +44,76 @@ def main():
     resultname = jobid + ".result"
 
     result_file = open(jobid+".result", 'w')
-    for para in paralist:
-        para = list(para)
-        cmd = ['./fsbench'] + para
-    
-        #########################
-        # get a clean file system
-        FormatFS.remakeExt4(partition, cmd[8], "jhe", "plfs", 
-            blockscount=2*1024*1024, blocksize=4096)
-
-        #########################
-        # Create files for later reads
-        filesize = totalbytes / (cmd[NDIR]*cmd[NFILE_PER_DIR])
-        opsize = min(4096, filesize) # in case the file is too small, like 1 byte
-        _nops_per_file = filesize / opsize
-        if _nops_per_file < 1:
-            # we don't accept number that is not 2^x
-            continue
-        cmd[SIZE_PER_OP] = opsize
-        cmd[NOPS_PER_FILE] = _nops_per_file
-
-        cmd[DO_WRITE] = 1
-        cmd[DO_READ] = 0
-        cmd = [str(x) for x in cmd]
-        print "For writing:", cmd
-
-
-        cmd[NOPS_PER_FILE] = _nops_per_file
-        cmd = [str(x) for x in cmd]
-
-        #print cmd
-        #continue
-
-        proc = subprocess.Popen(cmd, stdout=subprocess.PIPE)
-        proc.wait()
-
-
-        ########################
-        # Read the files in different ways, re-mount before 
-        # each reading
-
-
-        opsizes = sorted([1, 4, 1024, 4*1024, 1024*1024, 4*1024*1024], reverse=True)
+    for rep in range(5):
+        for para in paralist:
+            para = list(para)
+            cmd = ['./fsbench'] + para
         
-        # do read for each operation size if it is valid
-        for _size_per_op in opsizes:
-            #re-mount the file system to drop caches
-            FormatFS.umountFS(cmd[8])
-            FormatFS.mountExt4(partition, cmd[8])
+            #########################
+            # get a clean file system
+            FormatFS.remakeExt4(partition, cmd[8], "jhe", "plfs", 
+                blockscount=2*1024*1024, blocksize=4096)
 
-            _nops_per_file = filesize / _size_per_op
-
+            #########################
+            # Create files for later reads
+            filesize = totalbytes / (cmd[NDIR]*cmd[NFILE_PER_DIR])
+            opsize = min(4096, filesize) # in case the file is too small, like 1 byte
+            _nops_per_file = filesize / opsize
             if _nops_per_file < 1:
                 # we don't accept number that is not 2^x
                 continue
+            cmd[SIZE_PER_OP] = opsize
             cmd[NOPS_PER_FILE] = _nops_per_file
-            cmd[SIZE_PER_OP] = _size_per_op
-            
-            cmd[DO_WRITE] = 0
-            cmd[DO_READ] = 1
 
+            cmd[DO_WRITE] = 1
+            cmd[DO_READ] = 0
             cmd = [str(x) for x in cmd]
-            print "For read:", cmd
+            print "For writing:", cmd
 
-            # Run it
+
+            cmd[NOPS_PER_FILE] = _nops_per_file
+            cmd = [str(x) for x in cmd]
+
+            #print cmd
+            #continue
+
             proc = subprocess.Popen(cmd, stdout=subprocess.PIPE)
             proc.wait()
-            for line in proc.stdout:
-                print line,
-                result_file.write(line)
+
+
+            ########################
+            # Read the files in different ways, re-mount before 
+            # each reading
+
+
+            opsizes = sorted([1, 4, 1024, 4*1024, 1024*1024, 4*1024*1024], reverse=True)
+            
+            # do read for each operation size if it is valid
+            for _size_per_op in opsizes:
+                #re-mount the file system to drop caches
+                FormatFS.umountFS(cmd[8])
+                FormatFS.mountExt4(partition, cmd[8])
+
+                _nops_per_file = filesize / _size_per_op
+
+                if _nops_per_file < 1:
+                    # we don't accept number that is not 2^x
+                    continue
+                cmd[NOPS_PER_FILE] = _nops_per_file
+                cmd[SIZE_PER_OP] = _size_per_op
+                
+                cmd[DO_WRITE] = 0
+                cmd[DO_READ] = 1
+
+                cmd = [str(x) for x in cmd]
+                print "For read:", cmd
+
+                # Run it
+                proc = subprocess.Popen(cmd, stdout=subprocess.PIPE)
+                proc.wait()
+                for line in proc.stdout:
+                    print line,
+                    result_file.write(line)
 
     result_file.close()
 
