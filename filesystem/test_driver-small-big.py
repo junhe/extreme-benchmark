@@ -6,11 +6,11 @@ import FormatFS
 def main():
 
     # ndir
-    exps = [5] 
+    exps = [2] 
     ndir = [2**x for x in exps] # 1
     
     # nfile_per_dir
-    exps = [5]
+    exps = [2]
     nfile_per_dir = [2**x for x in exps] #2
 
     # nops_per_file
@@ -54,8 +54,8 @@ def main():
             for filesize in filesizes:    
                 #########################
                 # get a clean file system
-                #FormatFS.remakeExt4(partition, cmd[8], "jhe", "plfs", 
-                    #blockscount=2*1024*1024, blocksize=4096)
+                FormatFS.remakeExt4(partition, cmd[8], "jhe", "plfs", 
+                    blockscount=2*1024*1024, blocksize=4096)
 
                 #########################
                 # Create files for later reads
@@ -67,8 +67,8 @@ def main():
                 cmd = [str(x) for x in cmd]
                 print "For writing:", cmd
 
-                #proc = subprocess.Popen(cmd, stdout=subprocess.PIPE)
-                #proc.wait()
+                proc = subprocess.Popen(cmd, stdout=subprocess.PIPE)
+                proc.wait()
 
 
                 ########################
@@ -76,8 +76,8 @@ def main():
                 # each reading
 
                 #re-mount the file system to drop caches
-                #FormatFS.umountFS(cmd[8])
-                #FormatFS.mountExt4(partition, cmd[8])
+                FormatFS.umountFS(cmd[8])
+                FormatFS.mountExt4(partition, cmd[8])
                 
                 cmd[DO_WRITE] = 0
                 cmd[DO_READ] = 1
@@ -88,11 +88,20 @@ def main():
                 print "For read:", cmd
 
                 # Run it
-                #proc = subprocess.Popen(cmd, stdout=subprocess.PIPE)
-                #proc.wait()
-                #for line in proc.stdout:
-                    #print line,
-                    #result_file.write(line)
+                proc = subprocess.Popen(cmd, stdout=subprocess.PIPE)
+                proc.wait()
+                for line in proc.stdout:
+                    if "HEADERMARKER" in line:
+                        elems = line.split()
+                        elems.append("original_file_size")
+                    elif "DATAMARKER" in line:
+                        elems = line.split()
+                        elems.append(filesize)
+                    else:
+                        continue
+                    line = [str(x) for x in elems]
+                    print line,
+                    result_file.write(line)
 
     result_file.close()
 
