@@ -7,11 +7,11 @@ def main():
     totalbytes = 1*1024*1024*1024
 
     # ndir
-    exps = range(2)
+    exps = [0, 1, 9] 
     ndir = [2**x for x in exps] # 1
     
     # nfile_per_dir
-    exps = range(2)
+    exps = [0, 1, 9]
     nfile_per_dir = [2**x for x in exps] #2
 
     # nops_per_file
@@ -50,8 +50,8 @@ def main():
     
         #########################
         # get a clean file system
-        #FormatFS.remakeExt4(partition, cmd[8], "jhe", "plfs", 
-            #blockscount=2*1024*1024, blocksize=4096)
+        FormatFS.remakeExt4(partition, cmd[8], "jhe", "plfs", 
+            blockscount=2*1024*1024, blocksize=4096)
 
         #########################
         # Create files for later reads
@@ -76,22 +76,23 @@ def main():
         #print cmd
         #continue
 
-        #proc = subprocess.Popen(cmd, stdout=subprocess.PIPE)
-        #proc.wait()
+        proc = subprocess.Popen(cmd, stdout=subprocess.PIPE)
+        proc.wait()
 
 
         ########################
         # Read the files in different ways, re-mount before 
         # each reading
 
-        # re-mount the file system to drop caches
-        #FormatFS.umountFS(cmd[8])
-        #FormatFS.mountExt4(partition, cmd[8])
 
-        opsizes = [1, 4, 1024, 4*1024, 1024*1024, 4*1024*1024]
+        opsizes = sorted([1, 4, 1024, 4*1024, 1024*1024, 4*1024*1024], reverse=True)
         
         # do read for each operation size if it is valid
         for _size_per_op in opsizes:
+            #re-mount the file system to drop caches
+            FormatFS.umountFS(cmd[8])
+            FormatFS.mountExt4(partition, cmd[8])
+
             _nops_per_file = filesize / _size_per_op
 
             if _nops_per_file < 1:
@@ -103,8 +104,8 @@ def main():
             cmd[DO_WRITE] = 0
             cmd[DO_READ] = 1
 
+            cmd = [str(x) for x in cmd]
             print "For read:", cmd
-            continue
 
             # Run it
             proc = subprocess.Popen(cmd, stdout=subprocess.PIPE)
