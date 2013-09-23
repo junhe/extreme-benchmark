@@ -4,16 +4,16 @@ from time import localtime, strftime
 import FormatFS
 
 def main():
+    totalbytes = 1*1024*1024*1024
 
-    totalbytes = 2*1024*1024
-
-    exps = range(2)
+    exps = range(1)
     ndir = [2**x for x in exps] # 1
 
-    exps = range(2)
+    exps = range(1)
     nfile_per_dir = [2**x for x in exps] #2
     nops_per_file = [0] #3, decided by totalbytes
-    size_per_op = [1, 1024, 4096, 1024*1024, 4*1024*1024] #4 
+    #size_per_op = [1, 1024, 4096, 1024*1024, 4*1024*1024], reverse=True) #4 
+    size_per_op = [1] #4 
     do_fsync = [0] #5
     do_write = [0] #6
     do_read = [0]  #7
@@ -61,8 +61,8 @@ def main():
         cmd[7] = "0" # do_read
         print cmd
 
-        proc = subprocess.Popen(cmd, stdout=subprocess.PIPE)
-        proc.wait()
+        #proc = subprocess.Popen(cmd, stdout=subprocess.PIPE)
+        #proc.wait()
 
         # re-mount the file system to drop caches
         FormatFS.umountFS(cmd[8])

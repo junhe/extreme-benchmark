@@ -63,6 +63,10 @@ int main(int argc, char **argv)
     do_write = atoi(argv[6]);
     do_read = atoi(argv[7]);
     strcpy(topdir, argv[8]);
+    
+    int nfiles = nfile_per_dir * ndir;
+    long totalbytes = size_per_op * nops_per_file * nfiles;
+    long wtotal, rtotal;
 
     /* create the files */
     if ( do_write == 1 ) {
@@ -104,7 +108,8 @@ int main(int argc, char **argv)
                 /* write to file */
                 int writeno;
                 for ( writeno = 0; writeno < nops_per_file; writeno++) {
-                    write(fd, buf, size_per_op);
+                    int ret = write(fd, buf, size_per_op);
+                    wtotal += ret;
                     if ( do_fsync == 1 ) {
                         fsync(fd);
                     }
@@ -113,6 +118,7 @@ int main(int argc, char **argv)
             }
         }
         free(buf);
+        assert( wtotal == totalbytes );
     }
 
     /* read the files */
@@ -125,7 +131,6 @@ int main(int argc, char **argv)
         }
 
         int fileno, dirno;
-        int nfiles = nfile_per_dir * ndir;
 #define FDS_MAX 32768 
         int fds[FDS_MAX]; /* file descriptos in the order of operations */
         int i_fds = 0;
@@ -157,11 +162,12 @@ int main(int argc, char **argv)
         /* read the files in the order of opening */
         int ifile;
         int op;
-
+        rtotal = 0;
         gettimeofday(&start, NULL);
         for ( op = 0; op < nops_per_file; op++ ) {
             for ( ifile = 0; ifile < nfiles; ifile++ ) {
                 int ret = read(fds[ifile], buf, size_per_op);
+                rtotal += ret;
                 assert(ret == size_per_op);
             }
         }
@@ -179,12 +185,11 @@ int main(int argc, char **argv)
         read_close_time = result.tv_sec + result.tv_usec/1000000.0;
         
         free(buf);
+        assert( rtotal == totalbytes );
     }/* do_read */
 
 
     /* print out results */
-    int nfiles = ndir * nfile_per_dir;
-    long totalbytes = size_per_op * nops_per_file * nfiles;
     double totaltime = read_open_time + read_time + read_close_time;
 
     char str_read_open_time[128];
