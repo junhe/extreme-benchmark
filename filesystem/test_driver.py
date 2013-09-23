@@ -6,13 +6,19 @@ import FormatFS
 def main():
     totalbytes = 1*1024*1024*1024
 
-    exps = range(1)
+    # ndir
+    exps = range(2)
     ndir = [2**x for x in exps] # 1
-
-    exps = range(1)
+    
+    # nfile_per_dir
+    exps = range(2)
     nfile_per_dir = [2**x for x in exps] #2
+
+    # nops_per_file
     nops_per_file = [0] #3, decided by totalbytes
     #size_per_op = [1, 1024, 4096, 1024*1024, 4*1024*1024], reverse=True) #4 
+
+    # others
     size_per_op = [1] #4 
     do_fsync = [0] #5
     do_write = [0] #6
@@ -41,44 +47,71 @@ def main():
     for para in paralist:
         para = list(para)
         cmd = ['./fsbench'] + para
+    
+        #########################
+        # get a clean file system
+        #FormatFS.remakeExt4(partition, cmd[8], "jhe", "plfs", 
+            #blockscount=2*1024*1024, blocksize=4096)
 
-        # decide nops_per_file
-        _nops_per_file = \
-                totalbytes/(cmd[NDIR]*cmd[NFILE_PER_DIR]*cmd[SIZE_PER_OP])
+        #########################
+        # Create files for later reads
+        filesize = totalbytes / (cmd[NDIR]*cmd[NFILE_PER_DIR])
+        opsize = min(4096, filesize) # in case the file is too small, like 1 byte
+        _nops_per_file = filesize / opsize
         if _nops_per_file < 1:
+            # we don't accept number that is not 2^x
             continue
+        cmd[SIZE_PER_OP] = opsize
+        cmd[NOPS_PER_FILE] = _nops_per_file
+
+        cmd[DO_WRITE] = 1
+        cmd[DO_READ] = 0
+        cmd = [str(x) for x in cmd]
+        print "For writing:", cmd
+
+
         cmd[NOPS_PER_FILE] = _nops_per_file
         cmd = [str(x) for x in cmd]
+
         #print cmd
         #continue
-
-        # get a clean file system
-        FormatFS.remakeExt4(partition, cmd[8], "jhe", "plfs", 
-            blockscount=2*1024*1024, blocksize=4096)
-
-        # write the files
-        cmd[6] = "1" # do_write
-        cmd[7] = "0" # do_read
-        print cmd
 
         #proc = subprocess.Popen(cmd, stdout=subprocess.PIPE)
         #proc.wait()
 
+
+        ########################
+        # Read the files in different ways, re-mount before 
+        # each reading
+
         # re-mount the file system to drop caches
-        FormatFS.umountFS(cmd[8])
-        FormatFS.mountExt4(partition, cmd[8])
+        #FormatFS.umountFS(cmd[8])
+        #FormatFS.mountExt4(partition, cmd[8])
 
-       
-        # read the files
-        cmd[6] = "0" # do_write
-        cmd[7] = "1" # do_read
-        print cmd
+        opsizes = [1, 4, 1024, 4*1024, 1024*1024, 4*1024*1024]
+        
+        # do read for each operation size if it is valid
+        for _size_per_op in opsizes:
+            _nops_per_file = filesize / _size_per_op
 
-        proc = subprocess.Popen(cmd, stdout=subprocess.PIPE)
-        proc.wait()
-        for line in proc.stdout:
-            print line,
-            result_file.write(line)
+            if _nops_per_file < 1:
+                # we don't accept number that is not 2^x
+                continue
+            cmd[NOPS_PER_FILE] = _nops_per_file
+            cmd[SIZE_PER_OP] = _size_per_op
+            
+            cmd[DO_WRITE] = 0
+            cmd[DO_READ] = 1
+
+            print "For read:", cmd
+            continue
+
+            # Run it
+            proc = subprocess.Popen(cmd, stdout=subprocess.PIPE)
+            proc.wait()
+            for line in proc.stdout:
+                print line,
+                result_file.write(line)
 
     result_file.close()
 
