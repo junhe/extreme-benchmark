@@ -12,8 +12,10 @@ int main(int argc, char **argv)
     int do_access = atoi(argv[2]);
 
     if ( do_access ) {
+        printf("gonna fault\n");
         *addr = 0xff; /* writes a random thing */
     }
+    printf("NO fault\n");
 
     return EXIT_SUCCESS;
 }
