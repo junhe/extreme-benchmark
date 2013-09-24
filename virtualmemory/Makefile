@@ -7,9 +7,9 @@ CC=gcc
 INCLUDES=
 LIBS=-lpthread -lrt
 
-all: vmbench seg_disturbor
-seg_disturbor: seg_disturbor.o
-	${CC} ${CFLAGS} ${INCLUDES} -o $@ seg_disturbor.o ${LIBS}
+all: vmbench segfaulter
+seg_disturbor: segfaulter.o
+	${CC} ${CFLAGS} ${INCLUDES} -o $@ segfaulter.o ${LIBS}
 
 vmbench:main.o
 	${CC} ${CFLAGS} ${INCLUDES} -o $@ main.o ${LIBS}

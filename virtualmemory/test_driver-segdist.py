@@ -2,15 +2,15 @@ import itertools,subprocess
 import sys
 from time import gmtime, strftime
 
-def seg_fault(addr, doit):
-    cmd = ['./seg_disturbor', addr, doit]
+def seg_fault(doit, times):
+    cmd = ['./segfaulter', doit, times]
     cmd = [str(x) for x in cmd]
-    print cmd
+    #print cmd
     proc = subprocess.Popen(cmd)
     proc.wait()
 
 def main():
-    mem_len = [1024*1024*1024, 2*1024*1024*1024]
+    mem_len = [100*1024*1024]
     #mem_len = [1024*1024]
     start_addr = [0]
     #stride = [1, 1024, 4*1024, 8*1024, 16*1024, 32*1024, 64*1024, 128*1024, 256*1024, 512*1024]
@@ -43,8 +43,8 @@ def main():
             proc = subprocess.Popen(cmd[0:5], stdout=subprocess.PIPE)
 
             while proc.poll() == None:
-                for i in range(1024):
-                    seg_fault(i*4096, cmd[5]) 
+                for i in range(102):
+                    seg_fault(cmd[5], i) 
 
             proc.wait()
             for line in proc.stdout:
@@ -58,6 +58,7 @@ def main():
                     continue
                 line = " ".join([str(x) for x in elems])
                 result_file.write(line+'\n')
+                result_file.flush()
 
     result_file.close()
 
