@@ -42,7 +42,8 @@ int main(int argc, char **argv)
 {
     if ( argc != 9 ) {
         printf("Usage: %s ndir nfile_per_dir nops_per_file size_per_op do_fsync "
-               "do_write do_read topdir\n", argv[0]);
+               "do_write do_read topdir do_append\n", argv[0]);
+        printf("do_append is only for write\n");
         exit(1);
     }
 
@@ -52,7 +53,7 @@ int main(int argc, char **argv)
     double read_open_time, read_time, read_close_time;
 
     /* initialize parameters */
-    int ndir, nfile_per_dir, nops_per_file, size_per_op, do_fsync, do_write, do_read;
+    int ndir, nfile_per_dir, nops_per_file, size_per_op, do_fsync, do_write, do_read, do_append;
     char topdir[1024]; /* use path longer than this? crash! */
 
     ndir = atoi(argv[1]);
@@ -63,6 +64,7 @@ int main(int argc, char **argv)
     do_write = atoi(argv[6]);
     do_read = atoi(argv[7]);
     strcpy(topdir, argv[8]);
+    do_append = atoi(argv[9]);
     
     int nfiles = nfile_per_dir * ndir;
     long totalbytes = size_per_op * nops_per_file * nfiles;
@@ -98,8 +100,11 @@ int main(int argc, char **argv)
                 int fd;
                 sprintf(filepath, "%s/file.%05d", dirpath, fileno);
                 /*printf("%s\n", filepath);*/
-                
-                fd = open(filepath, O_WRONLY|O_CREAT, 0644);
+                int flag = O_WRONLY|O_CREAT;
+                if ( do_append == 1 ) {
+                    flag |= O_APPEND;
+                }
+                fd = open(filepath, flag, 0644);
                 if ( fd == -1 && errno != EEXIST) {
                     perror("failed to create file");
                     exit(1);
