@@ -3,13 +3,13 @@ import sys
 from time import gmtime, strftime
 
 def main():
-    mem_len = [1024*1024*1024, 2*1024*1024*1024, 
-               4*1024*1024*1024, 8*1024*1024*1024]
+    mem_len = [ 4*1024*1024*1024, 8*1024*1024*1024]
     start_addr = [0]
     #stride = [1, 1024, 4*1024, 8*1024, 16*1024, 32*1024, 64*1024, 128*1024, 256*1024, 512*1024]
     #stride = [1, 2, 512, 1024, 4*1024, 64*1024, 1024*1024, 2*1024*1024, 4*1024*1024, 8*1024*1024, 16*1024*1024]
-    exps = range(25)
+    exps = range(33) 
     op_size = [2**x for x in exps]
+    exps = [29, 30, 31, 32]
     stride = [2**x for x in exps]
     print stride
     #stride = [1, 2, 512, 1024, 4*1024, 64*1024, 1024*1024, 2*1024*1024]
@@ -28,6 +28,8 @@ def main():
 
             # skip invalid op_size and stride
             if para[2] > para[3]:
+                continue
+            if not ( para[2] == 1 or para[2] == para[3] ):
                 continue
 
             para = [str(x) for x in para]

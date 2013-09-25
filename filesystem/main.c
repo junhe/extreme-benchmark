@@ -131,7 +131,7 @@ int main(int argc, char **argv)
         }
 
         int fileno, dirno;
-#define FDS_MAX 32768 
+#define FDS_MAX 524288 
         int fds[FDS_MAX]; /* file descriptos in the order of operations */
         int i_fds = 0;
         

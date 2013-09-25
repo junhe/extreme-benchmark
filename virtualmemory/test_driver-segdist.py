@@ -9,14 +9,17 @@ def seg_fault(doit, times):
     proc = subprocess.Popen(cmd)
     proc.wait()
 
+#seg_fault(1, 10*1024*1024)
+#exit(1)
+
 def main():
-    mem_len = [100*1024*1024]
+    mem_len = [1024*1024*1024]
     #mem_len = [1024*1024]
     start_addr = [0]
     #stride = [1, 1024, 4*1024, 8*1024, 16*1024, 32*1024, 64*1024, 128*1024, 256*1024, 512*1024]
     #stride = [1, 2, 512, 1024, 4*1024, 64*1024, 1024*1024, 2*1024*1024, 4*1024*1024, 8*1024*1024, 16*1024*1024]
-    op_size = [4096]
-    stride = [4096*8]
+    op_size = [1, 4096]
+    stride = [1, 4096*8]
     do_seg = [0,1]
     #stride = [1, 2, 512, 1024, 4*1024, 64*1024, 1024*1024, 2*1024*1024]
     #stride = stride + [-x for x in stride]
@@ -25,10 +28,10 @@ def main():
     paralist = list(itertools.product(*parameters))
 
     jobid = strftime("%Y-%m-%d-%H-%M-%S", gmtime())
-    resultname = jobid + ".result"
+    resultpath = "./h6.results/"+ jobid + ".result"
 
-    result_file = open(jobid+".result", 'w')
-    for i in range(5):
+    result_file = open(resultpath, 'w')
+    for i in range(1):
         for para in paralist:
             para = list(para)
 
@@ -43,8 +46,7 @@ def main():
             proc = subprocess.Popen(cmd[0:5], stdout=subprocess.PIPE)
 
             while proc.poll() == None:
-                for i in range(102):
-                    seg_fault(cmd[5], i) 
+                seg_fault(cmd[5], 10*1024*1024) 
 
             proc.wait()
             for line in proc.stdout:

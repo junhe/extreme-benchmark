@@ -8,10 +8,12 @@ def main():
 
     # ndir
     exps = [0, 1, 9] 
+    #exps = [9] 
     ndir = [2**x for x in exps] # 1
     
     # nfile_per_dir
     exps = [0, 1, 9]
+    #exps = [9]
     nfile_per_dir = [2**x for x in exps] #2
 
     # nops_per_file
@@ -34,9 +36,13 @@ def main():
     DO_READ = 7
     TOPDIR = 8
     
-    parameters = [ndir, nfile_per_dir, nops_per_file, 
-                  size_per_op, do_fsync, do_write, do_read, topdir]
-    paralist = list(itertools.product(*parameters))
+    #parameters = [ndir, nfile_per_dir, nops_per_file, 
+    #              size_per_op, do_fsync, do_write, do_read, topdir]
+    #paralist = list(itertools.product(*parameters))
+    paralist = [ \
+                 [ 1, 1, 1048576, 1024, 0, 0, 0, '/l0'],
+                 [ 512, 512, 4096, 1, 0, 0, 0, '/l0'] \
+               ]
 
     partition = "/dev/sda4"
 
@@ -86,10 +92,14 @@ def main():
             # each reading
 
 
-            opsizes = sorted([1, 4, 1024, 4*1024, 1024*1024, 4*1024*1024], reverse=True)
+            opsizes = sorted([1, 1024, 4*1024], reverse=True)
             
             # do read for each operation size if it is valid
             for _size_per_op in opsizes:
+                if cmd[NDIR] == "512" and _size_per_op != 1:
+                    continue
+                if cmd[NDIR] == "1" and _size_per_op not in [1024, 4096]:
+                    continue
                 #re-mount the file system to drop caches
                 FormatFS.umountFS(cmd[8])
                 FormatFS.mountExt4(partition, cmd[8])
@@ -114,6 +124,7 @@ def main():
                 for line in proc.stdout:
                     print line,
                     result_file.write(line)
+                    result_file.flush()
 
     result_file.close()
 

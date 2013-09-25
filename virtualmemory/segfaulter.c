@@ -2,7 +2,7 @@
 #include <stdlib.h>
 #include <signal.h>
 
-int n = 0;
+long n = 0;
 char *p = 0; /* I know it is not necesary to assign here, just for easier understanding */
 
 void
