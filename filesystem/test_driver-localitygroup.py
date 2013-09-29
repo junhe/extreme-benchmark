@@ -1,6 +1,6 @@
 import itertools,subprocess
 import sys
-from time import localtime, strftime
+from time import localtime, strftime, sleep
 import FormatFS
 
 # In this test, I write with very small amount of
@@ -10,29 +10,38 @@ import FormatFS
 # Hopefully there will be fragmentations that affects 
 # the bw. 
 
+def trimcmd(cmd):
+    "use this when printing and Popen"
+    return cmd[0:10]
+
+def decrate(line, key, val):
+    elems = line.split() 
+    if "HEADERMARKER" in line:
+        elems.append(key)
+    elif "DATAMARKER" in line:
+        elems.append(val)
+    else:
+        return line
+
+    return " ".join([str(x).rjust(18) for x in elems]) + "\n"
+
+        
+
 def main():
-    totalbytes = 24*1024*1024
+    #justshow = True
     justshow = False
 
-    # ndir
-    exps = [0] 
-    ndir = [2**x for x in exps] # 1
-    
-    # nfile_per_dir
-    exps = [2]
-    nfile_per_dir = [2**x for x in exps] #2
-
-    # nops_per_file
+    ndir = [1] # 1
+    nfile_per_dir = [1] #2
     nops_per_file = [0] #3, decided by totalbytes
-    #size_per_op = [1, 1024, 4096, 1024*1024, 4*1024*1024], reverse=True) #4 
-
-    # others
     size_per_op = [1] #4 
-    do_fsync = [1] #5
+    do_fsync = [0] #5
     do_write = [0] #6
     do_read = [0]  #7
     topdir = ["/l0"] #8 
-    do_append = [0,1]
+    do_append = [1] #9
+    totalbytes = [128*1024*4*1024] #10
+    switchcpu = [0]
 
     NDIR = 1
     NFILE_PER_DIR = 2
@@ -43,9 +52,12 @@ def main():
     DO_READ = 7
     TOPDIR = 8
     DO_APPEND = 9
+    TOTALBYTES = 10
+    SWITCHCPU = 11
     
     parameters = [ndir, nfile_per_dir, nops_per_file, 
-                  size_per_op, do_fsync, do_write, do_read, topdir, do_append]
+                  size_per_op, do_fsync, do_write, do_read, topdir, 
+                  do_append, totalbytes, switchcpu]
     paralist = list(itertools.product(*parameters))
 
     partition = "/dev/sda4"
@@ -54,7 +66,7 @@ def main():
     resultname = jobid + ".result"
 
     result_file = open(jobid+".result", 'w')
-    for rep in range(3):
+    for rep in range(5):
         for para in paralist:
             para = list(para)
             cmd = ['./fsbench'] + para
@@ -64,11 +76,14 @@ def main():
             if not justshow:
                 FormatFS.remakeExt4(partition, cmd[8], "jhe", "plfs", 
                     blockscount=2*1024*1024, blocksize=4096)
+                subprocess.Popen("echo 262144 > /sys/fs/ext4/sda4/mb_stream_req", 
+                        shell=True)
+                sleep(3)
 
             #########################
             # Create files for later reads
-            filesize = totalbytes / (cmd[NDIR]*cmd[NFILE_PER_DIR])
-            opsize = min(1024, filesize) # in case the file is too small, like 1 byte
+            filesize = cmd[TOTALBYTES] / (cmd[NDIR]*cmd[NFILE_PER_DIR])
+            opsize = min(4096, filesize) # in case the file is too small, like 1 byte
             _nops_per_file = filesize / opsize
             if _nops_per_file < 1:
                 # we don't accept number that is not 2^x
@@ -79,18 +94,19 @@ def main():
             cmd[DO_WRITE] = 1
             cmd[DO_READ] = 0
 
-            # Now we do the two tests:
-            #   1. write all, then close
-            #   2. write one opsize, close, write next one, close ...
-            if  cmd[DO_APPEND] == 0:
-                cmd[NOPS_PER_FILE] = _nops_per_file
-                cmd[DO_FSYNC] = 0
-
-                print "For writing:", cmd
-                cmd = [str(x) for x in cmd]
-                if not justshow:
-                    proc = subprocess.Popen(cmd, stdout=subprocess.PIPE)
-                    proc.wait()
+            if cmd[SWITCHCPU] == 0:
+                # do not switch cpu
+                cmd[DO_APPEND] = 1
+                cmd[DO_FSYNC] = 0 
+                print "repeat:", _nops_per_file, \
+                        "For writing NOSWITCH (append):", trimcmd(cmd)
+                for i in range(_nops_per_file):
+                    cmd[NOPS_PER_FILE] = 1
+                    cmd = [str(x) for x in cmd]
+                    if not justshow:
+                        proc = subprocess.Popen(trimcmd(cmd), 
+                                stdout=subprocess.PIPE)
+                        proc.wait()
 
             else:
                 # do the appending thing
@@ -98,12 +114,17 @@ def main():
                 # we just do one operation per file open
                 cmd[DO_APPEND] = 1
                 cmd[DO_FSYNC] = 1
-                print "repeat:", _nops_per_file, "For writing (append):", cmd
+                print "repeat:", _nops_per_file, \
+                        "For writing (append):", trimcmd(cmd)
                 for i in range(_nops_per_file):
                     cmd[NOPS_PER_FILE] = 1
                     cmd = [str(x) for x in cmd]
+                    taskset_wrapper = ["taskset", "0x0000000"+str((i%2) + 1)]
+                    #print taskset_wrapper + trimcmd(cmd) 
+
                     if not justshow:
-                        proc = subprocess.Popen(cmd, stdout=subprocess.PIPE)
+                        proc = subprocess.Popen(taskset_wrapper+trimcmd(cmd), 
+                                stdout=subprocess.PIPE)
                         proc.wait()
 
             ########################
@@ -111,7 +132,7 @@ def main():
             # each reading
 
 
-            opsizes = sorted([1024], reverse=True)
+            opsizes = sorted([4096], reverse=True)
             
             # do read for each operation size if it is valid
             for _size_per_op in opsizes:
@@ -132,13 +153,14 @@ def main():
                 cmd[DO_READ] = 1
 
                 cmd = [str(x) for x in cmd]
-                print "For read:", cmd
+                print "For read:", trimcmd(cmd)
 
                 # Run it
                 if not justshow:
-                    proc = subprocess.Popen(cmd, stdout=subprocess.PIPE)
+                    proc = subprocess.Popen(trimcmd(cmd), stdout=subprocess.PIPE)
                     proc.wait()
                     for line in proc.stdout:
+                        line = decrate(line, "switchcpu", cmd[SWITCHCPU])
                         print line,
                         result_file.write(line)
 
