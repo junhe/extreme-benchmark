@@ -40,7 +40,7 @@
 
 int main(int argc, char **argv)
 {
-    if ( argc != 9 ) {
+    if ( argc != 10 ) {
         printf("Usage: %s ndir nfile_per_dir nops_per_file size_per_op do_fsync "
                "do_write do_read topdir do_append\n", argv[0]);
         printf("do_append is only for write\n");
@@ -218,6 +218,7 @@ int main(int argc, char **argv)
         double r_effective_iops = (nfiles*2 + nops_per_file*nfiles)/totaltime;
         sprintf(str_r_effective_iops, "%lf", r_effective_iops);
     } else {
+        return 0;
         sprintf(str_read_open_time, "NA");
         sprintf(str_read_time, "NA");
         sprintf(str_read_close_time, "NA");
@@ -228,6 +229,7 @@ int main(int argc, char **argv)
 
 
     printf(
+            "%15s "
             "%15s "
             "%15s "
             "%15s "
@@ -261,6 +263,7 @@ int main(int argc, char **argv)
             "r_effective_iops",
             "nfiles",
             "totalbytes",
+            "do_append",
             "HEADERMARKER_fs"
             );
     printf(
@@ -280,6 +283,7 @@ int main(int argc, char **argv)
             "%15s "
             "%15d "
             "%15ld "
+            "%15d "
             "%15s\n",
             ndir, 
             nfile_per_dir, 
@@ -297,6 +301,7 @@ int main(int argc, char **argv)
             str_r_effective_iops,
             nfiles,
             totalbytes,
+            do_append,
             "DATAMARKER_fs"
           );
     return 0;

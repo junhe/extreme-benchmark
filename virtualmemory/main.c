@@ -17,6 +17,7 @@
 #include <stdlib.h>
 #include <sys/time.h>
 #include <time.h>
+#include <string.h>
 
 int main(int argc, char **argv)
 {
@@ -38,12 +39,14 @@ int main(int argc, char **argv)
     start_addr = atol(argv[2]);
     op_size = atol(argv[3]);
     stride = atol(argv[4]);
-    n_loop = mem_len / abs(stride);
+    n_loop = mem_len / labs(stride);
 
     pmem = (char *)malloc(mem_len);
     if ( pmem == NULL ) {
         fprintf(stderr, "Failed to allocate memory.\n");
         exit(1);
+    } else {
+        printf("Memory allocated.\n");
     }
 
     long i;
@@ -68,7 +71,7 @@ int main(int argc, char **argv)
     gettimeofday(&end, NULL);
     timersub( &end, &start, &result );
     base_time = result.tv_sec + result.tv_usec/1000000.0;
-
+    printf("base_time: %lf\n", base_time);
     /* 
      * To get the aggerated time 
      */
@@ -77,7 +80,7 @@ int main(int argc, char **argv)
     for ( padding = start_addr; padding < padding_end; padding+=op_size ) {
         for ( i = 0; i < n_loop; ++i ) {
             op_addr = labs((padding + stride * i) % mem_len) ;
-            (*(char *)(pmem+op_addr))++;
+            memset(pmem+op_addr, 0x55, op_size);
         }
     }
 

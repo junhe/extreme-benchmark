@@ -2,12 +2,23 @@ import itertools,subprocess
 import sys
 from time import gmtime, strftime
 
+#justshow = True
+justshow = False
+taskset_wrapper = ["taskset", "0x00000001"]
 def seg_fault(doit, times):
+    if int(doit) == 2:
+        return
     cmd = ['./segfaulter', doit, times]
     cmd = [str(x) for x in cmd]
-    #print cmd
-    proc = subprocess.Popen(cmd)
-    proc.wait()
+    if not justshow:
+        try:
+            proc = subprocess.Popen(taskset_wrapper+cmd)
+            proc.wait()
+        except:
+            pass
+    else:
+        print cmd
+
 
 #seg_fault(1, 10*1024*1024)
 #exit(1)
@@ -18,9 +29,9 @@ def main():
     start_addr = [0]
     #stride = [1, 1024, 4*1024, 8*1024, 16*1024, 32*1024, 64*1024, 128*1024, 256*1024, 512*1024]
     #stride = [1, 2, 512, 1024, 4*1024, 64*1024, 1024*1024, 2*1024*1024, 4*1024*1024, 8*1024*1024, 16*1024*1024]
-    op_size = [1, 4096]
-    stride = [1, 4096*8]
-    do_seg = [0,1]
+    op_size = [1, 16*1024*1024]
+    stride = [1, 16*1024*1024]
+    do_seg = [0,1,2]
     #stride = [1, 2, 512, 1024, 4*1024, 64*1024, 1024*1024, 2*1024*1024]
     #stride = stride + [-x for x in stride]
 
@@ -31,7 +42,7 @@ def main():
     resultpath = "./h6.results/"+ jobid + ".result"
 
     result_file = open(resultpath, 'w')
-    for i in range(1):
+    for i in range(5):
         for para in paralist:
             para = list(para)
 
@@ -43,24 +54,25 @@ def main():
             cmd = ['./vmbench'] + para
             print cmd
 
-            proc = subprocess.Popen(cmd[0:5], stdout=subprocess.PIPE)
+            if not justshow:
+                proc = subprocess.Popen(taskset_wrapper+cmd[0:5], stdout=subprocess.PIPE)
 
-            while proc.poll() == None:
-                seg_fault(cmd[5], 10*1024*1024) 
+                while proc.poll() == None:
+                    seg_fault(cmd[5], 10*1024*1024) 
 
-            proc.wait()
-            for line in proc.stdout:
-                print line
-                elems = line.split()
-                if "HEADERMARKER" in line:
-                    elems.append("with_seg_faults")
-                elif "DATAMARKER" in line:
-                    elems.append(cmd[5])
-                else:
-                    continue
-                line = " ".join([str(x) for x in elems])
-                result_file.write(line+'\n')
-                result_file.flush()
+                proc.wait()
+                for line in proc.stdout:
+                    print line
+                    elems = line.split()
+                    if "HEADERMARKER" in line:
+                        elems.append("with_seg_faults")
+                    elif "DATAMARKER" in line:
+                        elems.append(cmd[5])
+                    else:
+                        continue
+                    line = " ".join([str(x) for x in elems])
+                    result_file.write(line+'\n')
+                    result_file.flush()
 
     result_file.close()
 
